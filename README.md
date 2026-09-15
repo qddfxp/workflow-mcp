@@ -11,6 +11,14 @@
 自动：create_workflow(steps 标 mode="auto") → run_workflow（或 dispatch_batches + 宿主并行执行 + complete_step）
 ```
 
+终端里直接跑（详见「命令行调用」）：
+
+```bash
+node call.mjs create_workflow '{"name":"发布","steps":[{"id":"A","title":"准备"},{"id":"B","title":"构建","dependsOn":["A"]}]}'
+node call.mjs next_step '{"id":"发布-6z8j"}'
+node call.mjs complete_step '{"id":"发布-6z8j","stepId":"A","result":{"ok":true}}'
+```
+
 ## 工具（15 个）
 
 | 工具 | 作用 |
@@ -120,6 +128,7 @@
 
 ```
 server.mjs             MCP stdio 服务器（JSON-RPC 2.0，逐行消息）+ 工具注册与按流加锁
+call.mjs               命令行调用器：node call.mjs <tool> '<json>'（终端直调，开发/调试用）
 lib/config.mjs         环境变量与默认值（唯一配置入口）
 lib/schema.mjs         步骤规范化、创建期结构校验、id/文件名安全化
 lib/state.mjs          六态状态机、确定性门控与 READY 推导
@@ -139,7 +148,9 @@ flows/                 工作流数据（每流 <id>.json + <id>.WORKFLOW.md）�
 
 ## 注册（用户级）
 
-`~/.zcode/cli/config.json`：
+不同宿主读**不同的配置文件**，格式也不同，别写错地方：
+
+**zcode CLI** —— `~/.zcode/cli/config.json`
 
 ```json
 {
@@ -154,7 +165,42 @@ flows/                 工作流数据（每流 <id>.json + <id>.WORKFLOW.md）�
 }
 ```
 
+**WorkBuddy** —— `~/.workbuddy/mcp.json`（是 `mcp.json`，**不是** `.mcp.json`）
+
+```json
+{
+  "mcpServers": {
+    "workflow": {
+      "command": "C:\\Users\\<你>\\.workbuddy\\binaries\\node\\versions\\<ver>\\node.exe",
+      "args": ["E:\\workflow mcp\\server.mjs"]
+    }
+  }
+}
+```
+
+`command` 建议写 node 的**绝对路径**而非裸 `node`：宿主派生子进程时的 PATH 未必与终端一致，裸 `node` 可能解析不到。另外配置写完**不会自动生效**，需要在宿主的「自定义连接器」里对该服务器点一次「信任」才会加载。
+
 可选参数 `--root <dir>` 改变存储位置（默认服务器目录），测试也用它隔离数据。
+
+## 命令行调用（call.mjs）
+
+不经过宿主、直接从终端调任意工具：
+
+```bash
+node call.mjs --list                                    # 列出全部工具与说明
+node call.mjs list_workflows                            # 调用工具（无参数）
+node call.mjs create_workflow '{"name":"发布","steps":[{"id":"A","title":"准备"}]}'
+node call.mjs next_step '{"id":"发布-6z8j"}'
+node call.mjs run_workflow '{"id":"发布-6z8j"}'         # 配了 LLM_* 就会真的执行（方案A）
+node call.mjs --root /tmp/scratch list_workflows        # 隔离到临时目录，不碰项目数据
+node call.mjs --json get_workflow '{"id":"..."}'        # 打印完整响应（含 structuredContent）
+node call.mjs --no-env list_workflows                   # 强制不载入 LLM 密钥
+```
+
+- **默认会从 `~/.workbuddy/mcp.json` 载入对应服务器的 `env` 块**（`--env-file <f>` 换来源，`--no-env` 关闭）。这一步很关键：否则服务器看不到 `LLM_*`，`run_workflow` 会**静默退化成方案B派发**，容易被误判成"密钥没生效"。载入提示走 stderr，stdout 始终干净，可安全 `| node` 消费。
+- 退出码 `0` 成功 / `1` 工具返回 `isError` / `2` 用法或协议错误 —— 便于在脚本里判断；
+- 默认输出人类可读文本，`--json` 输出完整 JSON 响应；
+- 底层就是 spawn `server.mjs` + stdio + JSON-RPC，与 `test/` 下各测试同一条链路，没有旁路。
 
 ## 测试
 
