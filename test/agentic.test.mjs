@@ -1,4 +1,4 @@
-// UPGRADE-agentic.md 验收测试（第 1、2 期）：步骤内 agent 循环 + 六个内置工具 + 安全沙箱
+// docs/UPGRADE-agentic.md 验收测试（第 1、2 期）：步骤内 agent 循环 + 六个内置工具 + 安全沙箱
 // + outputSchema / verify / final_verify。自带脚本化 mock LLM（按步骤 id 返回预设 tool_calls
 // 序列，可读取请求里的工具结果做动态断言），零依赖。
 // 运行：node test/agentic.test.mjs

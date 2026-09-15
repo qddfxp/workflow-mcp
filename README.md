@@ -22,7 +22,7 @@
 
 ## auto 步骤 = 服务器内的小 Agent
 
-配置 `LLM_BASE_URL` + `LLM_API_KEY` 后，每个 auto 步骤不再是一次 prompt→一段文本，而是**步骤内 Agent 循环**（见 `UPGRADE-agentic.md`）：
+配置 `LLM_BASE_URL` + `LLM_API_KEY` 后，每个 auto 步骤不再是一次 prompt→一段文本，而是**步骤内 Agent 循环**（见 `docs/UPGRADE-agentic.md`）：
 
 1. 首轮请求带内置工具定义 + 系统提示（沙箱目录、可用工具）+ 步骤提示词（含上游结果）；
 2. 模型返回 `tool_calls` → 服务器在进程内执行工具 → 结果作为工具消息回喂 → 继续循环；
@@ -100,6 +100,7 @@
 - `lib/store.mjs` — 状态机、schema 迁移、批次规划、提示词拼装、持久化
 - `lib/agent.mjs` — agent 循环、六个内置工具、安全沙箱、OpenAI/Anthropic 协议适配、极简 JSON Schema 校验
 - `lib/executor.mjs` — 方案A 执行编排（并发池/重试/取消/verify/final_verify）+ 方案B 派发
+- `docs/` — 升级说明与需求文档（`SPEC.md`、`UPGRADE-agentic.md`）
 - `flows/` — 工作流数据（每流 `<id>.json` + `<id>.WORKFLOW.md`）；`trash/` — 删除归档
 - `test/smoke.mjs` — 旧 10 工具回归；`test/run.test.mjs` — 双能力验收（并行/门控/失败隔离/续跑/A-B切换/cancel，内置 mock LLM）；`test/agentic.test.mjs` — agent 循环验收（工具/沙箱/白名单/outputSchema/verify/final_verify/Anthropic 协议）
 

@@ -1,4 +1,4 @@
-// SPEC.md 验收测试（2-6）+ schema1 迁移。自带 mock LLM 服务器（node:http），零依赖。
+// docs/SPEC.md 验收测试（2-6）+ schema1 迁移。自带 mock LLM 服务器（node:http），零依赖。
 // 运行：node test/run.test.mjs
 import { spawn } from 'node:child_process';
 import http from 'node:http';
