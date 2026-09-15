@@ -1,0 +1,13 @@
+{
+  "name": "workflow-mcp",
+  "version": "1.0.0",
+  "description": "Deterministic workflow MCP server: DAG steps + boolean gates + resumable state. Zero dependencies, stdio transport.",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node test/smoke.mjs && node test/run.test.mjs && node test/agentic.test.mjs"
+  },
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}
