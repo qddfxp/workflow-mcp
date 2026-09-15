@@ -1,3 +1,6 @@
 # 运行时工作流数据（不入库，服务器会在启动时自动创建）
 flows/
 trash/
+
+# agent 内部记忆/状态（workbuddy 等工具的笔记，不入库）
+.workbuddy/

@@ -1,13 +1,18 @@
 // 烟囱测试：spawn 服务器，走完整协议链路（握手 → 工具列表 → 建流 → 门控分支 → 撤销 → 删除）
 // 运行：node test/smoke.mjs
+//
+// 用临时 root，避免把测试数据写进项目自己的 flows/ 与 trash/。
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SERVER = path.resolve(HERE, '..', 'server.mjs');
+const ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'wf-smoke-'));
 
-const proc = spawn(process.execPath, [SERVER], { stdio: ['pipe', 'pipe', 'inherit'] });
+const proc = spawn(process.execPath, [SERVER, '--root', ROOT], { stdio: ['pipe', 'pipe', 'inherit'] });
 let buf = '';
 const pending = new Map();
 let nextId = 1;
@@ -100,13 +105,24 @@ check('撤销后 B 再次 READY', n3.result.structuredContent.ready.includes('B'
 const bad = await call('complete_step', { id: flowId, stepId: '不存在' });
 check('未知步骤返回 isError', bad.result.isError === true);
 
-// 9. 列表 + 删除
+// 9. 列表 + 归档删除 + 回收站恢复
 const li = await call('list_workflows', {});
 check('list_workflows 能看到该流', text(li).includes(flowId) || JSON.stringify(li).includes(flowId));
 const del = await call('delete_workflow', { id: flowId });
 check('delete_workflow 归档', del.result.isError !== true, text(del));
+const tr = await call('list_trash', {});
+check('list_trash 能看到归档项', JSON.stringify(tr.result.structuredContent ?? {}).includes(flowId), text(tr));
+const re = await call('restore_workflow', { id: flowId });
+check('restore_workflow 从归档恢复', re.result.isError !== true && re.result.structuredContent?.id === flowId, text(re));
+const st4 = await call('workflow_status', { id: flowId });
+check('恢复后仍是 B 撤销前的状态（C 就绪）', /▶️ ready C|C 发布/.test(text(st4)), text(st4));
+
+// 10. 安全：非法流 id 不得逃出 flows/ 目录
+const evil = await call('delete_workflow', { id: '../../etc/passwd' });
+check('非法 id（路径穿越）被拒绝', evil.result.isError === true && /非法的工作流 id/.test(text(evil)), text(evil));
 
 proc.stdin.end();
 await new Promise((r) => proc.on('exit', r));
+fs.rmSync(ROOT, { recursive: true, force: true });
 console.log(failed ? `\n✗ ${failed} 项失败` : '\n✓ 全部通过');
 process.exit(failed ? 1 : 0);
